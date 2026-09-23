@@ -1,0 +1,5 @@
+---
+folder_id: b1gt5eb0nk041cc88u7u
+ci_name: diplom-ci
+github_repo: aikochnev/diplom-docker
+terraform_dir: "{{ playbook_dir }}/../terraform"

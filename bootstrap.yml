@@ -1,0 +1,196 @@
+---
+- name: Bootstrap CI service account and GitHub variables
+  hosts: local
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - group_vars/all.yml
+
+  tasks:
+    - name: Check required tools
+      ansible.builtin.shell: "command -v {{ item }}"
+      args:
+        executable: /bin/bash
+      loop:
+        - yc
+        - terraform
+        - gh
+        - jq
+      changed_when: false
+
+    - name: Check diplom-ci
+      ansible.builtin.command:
+        cmd: >
+          yc iam service-account get
+          --name {{ ci_name }}
+          --format json
+      register: ci_get
+      changed_when: false
+      failed_when: false
+
+    - name: Create diplom-ci if absent
+      ansible.builtin.command:
+        cmd: >
+          yc iam service-account create
+          --name {{ ci_name }}
+          --description "GitHub Actions Docker image publisher"
+          --folder-id {{ folder_id }}
+      when: ci_get.rc != 0
+
+    - name: Read diplom-ci
+      ansible.builtin.command:
+        cmd: >
+          yc iam service-account get
+          --name {{ ci_name }}
+          --format json
+      register: ci_account
+      changed_when: false
+
+    - name: Set CI service account ID
+      ansible.builtin.set_fact:
+        ci_id: "{{ (ci_account.stdout | from_json).id }}"
+
+    - name: Read folder access bindings
+      ansible.builtin.command:
+        cmd: >
+          yc resource-manager folder list-access-bindings
+          --id {{ folder_id }}
+          --format json
+      register: bindings
+      changed_when: false
+
+    - name: Assign pusher role if missing
+      ansible.builtin.command:
+       cmd: >
+         yc resource-manager folder add-access-binding
+          --id {{ folder_id }}
+          --role container-registry.images.pusher
+          --subject serviceAccount:{{ ci_id }}
+      when: >
+        (
+         bindings.stdout | from_json
+          | selectattr('role_id', 'defined')
+          | selectattr('role_id', 'equalto', 'container-registry.images.pusher')
+          | selectattr('subject', 'defined')
+          | map(attribute='subject')
+          | selectattr('id', 'equalto', ci_id)
+          | list
+          | length
+        ) == 0
+
+    - name: Read Terraform registry output
+      ansible.builtin.command:
+        cmd: terraform output -raw container_registry_id
+        chdir: "{{ terraform_dir }}"
+      register: registry_id
+      changed_when: false
+
+    - name: Read Terraform VM IPs
+      ansible.builtin.command:
+        cmd: terraform output -json web_public_ips
+        chdir: "{{ terraform_dir }}"
+      register: web_ips_raw
+      changed_when: false
+
+    - name: Parse VM IPs
+      ansible.builtin.set_fact:
+        web_ips: "{{ web_ips_raw.stdout | from_json }}"
+
+    - name: Read current GitHub variables
+      ansible.builtin.command:
+        argv:
+          - gh
+          - variable
+          - list
+          - --repo
+          - "{{ github_repo }}"
+          - --json
+          - name,value
+      register: github_variables_raw
+      changed_when: false
+
+    - name: Parse current GitHub variables
+      ansible.builtin.set_fact:
+        github_variables: "{{ github_variables_raw.stdout | from_json }}"
+
+    - name: Get current GitHub variable values
+      ansible.builtin.set_fact:
+        current_registry_id: >-
+          {{
+            (
+              github_variables
+              | selectattr('name', 'equalto', 'YC_REGISTRY_ID')
+              | map(attribute='value')
+              | list
+              | first
+            ) | default('', true)
+          }}
+        current_web_b_ip: >-
+          {{
+            (
+              github_variables
+              | selectattr('name', 'equalto', 'WEB_B_IP')
+              | map(attribute='value')
+              | list
+              | first
+            ) | default('', true)
+          }}
+        current_web_d_ip: >-
+         {{
+            (
+              github_variables
+              | selectattr('name', 'equalto', 'WEB_D_IP')
+              | map(attribute='value')
+              | list
+              | first
+            ) | default('', true)
+          }}
+
+
+    - name: Update YC_REGISTRY_ID GitHub variable
+      ansible.builtin.command:
+        argv:
+          - gh
+          - variable
+          - set
+          - YC_REGISTRY_ID
+          - --repo
+          - "{{ github_repo }}"
+          - --body
+          - "{{ registry_id.stdout | trim }}"
+      when: current_registry_id != (registry_id.stdout | trim)
+
+    - name: Update WEB_B_IP GitHub variable
+      ansible.builtin.command:
+        argv:
+          - gh
+          - variable
+          - set
+          - WEB_B_IP
+          - --repo
+          - "{{ github_repo }}"
+          - --body
+          - "{{ web_ips['web-b'] }}"
+      when: current_web_b_ip != web_ips['web-b']
+
+    - name: Update WEB_D_IP GitHub variable
+      ansible.builtin.command:
+        argv:
+          - gh
+          - variable
+          - set
+          - WEB_D_IP
+          - --repo
+          - "{{ github_repo }}"
+          - --body
+          - "{{ web_ips['web-d'] }}"
+      when: current_web_d_ip != web_ips['web-d']
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg:
+          - "diplom-ci ID: {{ ci_id }}"
+          - "Registry ID: {{ registry_id.stdout | trim }}"
+          - "web-b IP: {{ web_ips['web-b'] }}"
+          - "web-d IP: {{ web_ips['web-d'] }}"
