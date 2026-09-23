@@ -17,13 +17,13 @@ Ansible в этом проекте используется не для заме
 ## Структура каталога
 
 ansible/
-├── ansible.cfg
-├── bootstrap.yml
-├── group_vars/
-│   └── all.yml
-├── inventory/
-│   └── prod.yml
-└── README.md
+    ├── ansible.cfg
+    ├── bootstrap.yml
+    ├── group_vars/
+    │   └── all.yml
+    ├── inventory/
+    │   └── prod.yml
+    └── README.md
 
 ## Назначение файлов:
 Файл	                    Назначение
@@ -37,12 +37,12 @@ README.md	            Документация Ansible-подсистемы
 ## В данном проекте Ansible запускается локально на Ubuntu-машине:
 
 Ubuntu control machine
-↓
+    ↓
 Ansible
-├── yc
-├── terraform
-├── gh
-└── jq
+    ├── yc
+    ├── terraform
+    ├── gh
+    └── jq
 
 ## Ansible не подключается к web-b и web-d по SSH в рамках bootstrap.yml.
 
