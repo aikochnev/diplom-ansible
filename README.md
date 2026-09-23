@@ -15,7 +15,7 @@ Ansible в этом проекте используется не для заме
 Обычный application deployment продолжает выполняться через GitHub Actions, SSH и Docker.
 
 ## Структура каталога
-
+```
 ansible/
     ├── ansible.cfg
     ├── bootstrap.yml
@@ -24,7 +24,7 @@ ansible/
     ├── inventory/
     │   └── prod.yml
     └── README.md
-
+```
 ## Назначение файлов:
 Файл	                    Назначение
 ansible.cfg	            Локальная конфигурация Ansible
@@ -35,7 +35,7 @@ README.md	            Документация Ansible-подсистемы
 
 
 ## В данном проекте Ansible запускается локально на Ubuntu-машине:
-
+```
 Ubuntu control machine
     ↓
 Ansible
@@ -43,7 +43,7 @@ Ansible
     ├── terraform
     ├── gh
     └── jq
-
+``` 
 ## Ansible не подключается к web-b и web-d по SSH в рамках bootstrap.yml.
 
 Выполнение происходит на локальном control node через: connection: local
