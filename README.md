@@ -43,7 +43,7 @@ Ansible
     ├── terraform
     ├── gh
     └── jq
-``` 
+```
 ## Ansible не подключается к web-b и web-d по SSH в рамках bootstrap.yml.
 
 Выполнение происходит на локальном control node через: connection: local
@@ -59,33 +59,33 @@ Ansible поддерживает явное описание localhost с ansibl
 ## Файл bootstrap.yml — основной Ansible playbook проекта.
 
 Полный порядок выполнения Ansible:
-
+```
 ansible-playbook bootstrap.yml
-↓
+        ↓
 Проверка yc, terraform, gh, jq
-↓
+        ↓
 Проверка diplom-ci
-↓
+        ↓
 Создание diplom-ci при отсутствии
-↓
+        ↓
 Получение ID diplom-ci
-↓
+        ↓
 Проверка IAM role pusher
-↓
+        ↓
 Назначение роли при отсутствии
-↓
+        ↓
 Чтение Terraform Registry ID
-↓
+        ↓
 Чтение IP web-b и web-d
-↓
+        ↓
 Чтение текущих GitHub Variables
-↓
+        ↓
 Сравнение значений
-↓
+        ↓
 Обновление только изменившихся Variables
-↓
+        ↓
 Вывод результата
-
+```
 При повторном запуске Ansible не создаёт уже существующие ресурсы и не обновляет GitHub Variables без необходимости. Это делает playbook удобным для повторного использования после пересоздания инфраструктуры. Ansible определяет принцип идемпотентности как повторное выполнение операции без изменения итогового состояния:
 
 ### После первого Terraform apply
